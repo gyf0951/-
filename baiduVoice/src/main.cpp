@@ -18,8 +18,8 @@ const char* password = "3Ljp@682";
 
 // 音频参数配置
 #define SAMPLE_RATE 16000     // 16kHz采样率
-#define RECORD_TIME_SECONDS 15
-#define BUFFER_SIZE (SAMPLE_RATE * RECORD_TIME_SECONDS * sizeof(int16_t))  // 修正缓冲区计算
+#define RECORD_TIME_SECONDS 10
+#define BUFFER_SIZE (SAMPLE_RATE * RECORD_TIME_SECONDS )  
 #define READ_CHUNK_SIZE 1024  // 每次读取的块大小
 
 // 百度语音API配置
@@ -33,24 +33,11 @@ String baiduSTT_Send(String token, uint8_t* audioData, int audioDataSize);
 void i2s_install();
 void i2s_pin_setup();
 
-
-void formatSPIFFS() {
-  Serial.println("正在格式化 SPIFFS...");
-  if (SPIFFS.format()) {
-    Serial.println("格式化成功");
-  } else {
-    Serial.println("格式化失败");
-  }
-}
+//开辟内存
+static uint8_t* pcm_data = NULL;
 
 void setup() {
   Serial.begin(115200);
-  /* formatSPIFFS();
-  if(!SPIFFS.begin(true)){
-    Serial.println("SPIFFS初始化失败");
-    ESP.restart();
-  } */
-  Serial.println("SPIFFS 挂载成功");
   // WiFi连接
   WiFi.begin(ssid, password);
   Serial.print("Connecting to WiFi");
@@ -66,14 +53,8 @@ void setup() {
   // I2S初始化
   i2s_install();
   i2s_pin_setup();
-}
 
-void loop() {
-  Serial.printf("Free Heap: %d\n", ESP.getFreeHeap());
-  static uint8_t* pcm_data = NULL;
-  static size_t recordingSize = 0;
-  
-  // 内存分配
+   // 内存分配
   if (!pcm_data) {
     pcm_data = (uint8_t*)ps_malloc(BUFFER_SIZE);
     if (!pcm_data) {
@@ -83,13 +64,20 @@ void loop() {
     }
     memset(pcm_data, 0, BUFFER_SIZE);
   }
+}
+
+void loop() {
+  Serial.printf("Free Heap: %d\n", ESP.getFreeHeap());
+  static size_t recordingSize = 0;
+  memset(pcm_data, 0, BUFFER_SIZE);
+ 
 
   // 录音参数
   size_t bytes_read = 0;
   int16_t readBuffer[READ_CHUNK_SIZE];
   bool isRecording = true;
   unsigned long silenceStart = 0;
-  const int silenceThreshold = 15;    // 静音检测阈值
+  const int silenceThreshold = 50;    // 静音检测阈值
   const unsigned long maxSilence = 1000; // 最大静音时间(ms)
 
   // 开始录音
@@ -134,8 +122,8 @@ void loop() {
   }
 
   // 重置参数
-  free(pcm_data);
-  pcm_data = NULL;
+/*   free(pcm_data);
+  pcm_data = NULL; */
   recordingSize = 0;
   delay(2000);
 }
