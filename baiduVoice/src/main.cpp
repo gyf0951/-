@@ -237,7 +237,7 @@ String baiduSTT_Send(String access_token, uint8_t* audioData, int audioDataSize)
         responseDoc["err_no"].as<int>(),
         responseDoc["err_msg"].as<String>().c_str());
       }
-      recognizedText = responseDoc["result"].as<String>();
+      recognizedText = responseDoc["result"][0].as<String>();
     }
   } else {
     Serial.printf("[HTTP] POST failed, error: %s\n", http_client.errorToString(httpCode).c_str());
