@@ -77,8 +77,11 @@ void loop() {
   int16_t readBuffer[READ_CHUNK_SIZE];
   bool isRecording = true;
   unsigned long silenceStart = 0;
-  const int silenceThreshold = 50;    // 静音检测阈值
-  const unsigned long maxSilence = 1000; // 最大静音时间(ms)
+  const int silenceThreshold = 200;    // 静音检测阈值
+  const unsigned long maxSilence = 1500; // 最大静音时间(ms)
+  bool hasSpeech = false; //录音标志
+  const unsigned long minRecord = 1000; //最小录音时间
+  unsigned long recordStart = millis();
 
   // 开始录音
   Serial.println("Start recording...");
@@ -101,12 +104,14 @@ void loop() {
     // 静音检测逻辑
     if (avgEnergy < silenceThreshold) {
       if (silenceStart == 0) silenceStart = millis();
-      if (millis() - silenceStart > maxSilence) {
+      if ((millis() - silenceStart > maxSilence) && (millis() - recordStart > minRecord) ) {
         Serial.println("Silence detected, stop recording");
-        isRecording = false;
+        break;
       }
-    } else {
+    } 
+    else {
       silenceStart = 0;  // 重置静音计时
+      hasSpeech = true;
     }
 
     // 存储数据
@@ -115,7 +120,7 @@ void loop() {
   }
 
   // 语音识别处理
-  if (recordingSize > 0) {
+  if (recordingSize > 0 && hasSpeech) {
     Serial.println("Processing speech recognition...");
     String result = baiduSTT_Send(access_token, pcm_data, recordingSize);
     Serial.println("Recognition Result: " + result);
