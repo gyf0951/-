@@ -15,11 +15,11 @@ const char* password = "3Ljp@682";
 #define I2S_SD 7
 #define I2S_Port I2S_NUM_0  //输入
 
-//扬声器引脚定义
-#define I2S_LRC 15
-#define I2S_BCLK 16
-#define I2S_DIN 17
-#define I2S_Port_On I2S_NUM_1 //音频输出
+//功放引脚定义
+#define I2S_LRC 13
+#define I2S_BCLK 14
+#define I2S_DIN 21
+#define I2S_Port_On I2S_NUM_1 //输出
 
 
 //函数声明
@@ -45,11 +45,7 @@ void loop() {
     Serial.println(data[i]);
   }
 
-  float volume_scale = 2.0; 
-  for (int i = 0; i < bytes_read / sizeof(int32_t); i++) {
-    data[i]=data[i]*volume_scale;
-    data[i] = data[i] >> 8; // 去除高位填充（24→32位对齐）
-  }
+  
 
   
 
@@ -62,12 +58,12 @@ void i2s_install_in(){
   const i2s_config_t i2s_config_in={
     .mode=(i2s_mode_t)(I2S_MODE_MASTER | I2S_MODE_RX),
     .sample_rate=SAMPLE_RATE,
-    .bits_per_sample=I2S_BITS_PER_SAMPLE_32BIT,
+    .bits_per_sample=I2S_BITS_PER_SAMPLE_16BIT,
     .channel_format=I2S_CHANNEL_FMT_ONLY_LEFT,
-    .communication_format=I2S_COMM_FORMAT_STAND_I2S,
+    .communication_format=i2s_comm_format_t(I2S_COMM_FORMAT_STAND_I2S),
     .intr_alloc_flags=ESP_INTR_FLAG_LEVEL1,
     .dma_buf_count=8,
-    .dma_buf_len=512
+    .dma_buf_len=128
   };
   i2s_driver_install(I2S_Port, &i2s_config_in, 0, NULL);
 }
@@ -86,12 +82,12 @@ void i2s_install_on(){
   i2s_config_t i2s_config_on={
     .mode=(i2s_mode_t)(I2S_MODE_MASTER | I2S_MODE_TX),
     .sample_rate=SAMPLE_RATE,
-    .bits_per_sample=I2S_BITS_PER_SAMPLE_32BIT,
+    .bits_per_sample=I2S_BITS_PER_SAMPLE_16BIT,
     .channel_format=I2S_CHANNEL_FMT_ONLY_LEFT,
-    .communication_format=I2S_COMM_FORMAT_STAND_I2S ,
+    .communication_format=i2s_comm_format_t(I2S_COMM_FORMAT_STAND_I2S) ,
     .intr_alloc_flags = ESP_INTR_FLAG_LEVEL1,
     .dma_buf_count = 8,
-    .dma_buf_len=512
+    .dma_buf_len=128
   };
   i2s_driver_install(I2S_Port_On, &i2s_config_on, 0, NULL);
 }
