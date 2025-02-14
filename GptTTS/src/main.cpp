@@ -203,7 +203,7 @@ void loop() {
   else{
     Serial.println("等待语音输入");
   }
-
+  delay(1500);
 }
 
 
@@ -350,9 +350,9 @@ void baiduTTS_Send(String access_token, String text){
     return;
   }
   const int per=0;
-  const int spd=5;
+  const int spd=6;
   const int pit=5;
-  const int vol=2;
+  const int vol=5;
   const int aue=6;
 
   const char* header[] = { "Content-Type", "Content-Length" };
