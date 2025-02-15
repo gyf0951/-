@@ -6,13 +6,13 @@
 #include <base64.hpp>
 
 // WiFi配置
-const char* ssid = "jtkj";
-const char* password = "3Ljp@682";
+const char* ssid = "CMCC-9iMc";
+const char* password = "px2qyej7";
 
 // 硬件引脚定义
-#define I2S_WS 5
-#define I2S_SCK 6
-#define I2S_SD 7
+#define I2S_WS 4
+#define I2S_SCK 5
+#define I2S_SD 6
 #define I2S_Port I2S_NUM_0
 
 // 音频参数配置
@@ -29,7 +29,7 @@ String access_token = "";
 //豆包api key
 const char *doubao_api= "d7146afd-8d2c-40ff-a6ac-b233ee313f1e";
 String gptUrl="https://ark.cn-beijing.volces.com/api/v3/chat/completions";
-String inputText="你好";
+String inputText="";
 String answer;
 
 // 函数声明
@@ -80,78 +80,79 @@ void setup(){
 void loop(){
   inputText="";
   Serial.printf("Free Heap: %d\n", ESP.getFreeHeap());
-  static size_t recordingSize = 0;
   memset(pcm_data, 0, BUFFER_SIZE);
   
 
-  // 录音参数
-  size_t bytes_read = 0;
-  int16_t readBuffer[READ_CHUNK_SIZE];
-  unsigned long silenceStart = 0;
-  const int silenceThreshold = 200;    // 静音检测阈值
-  const unsigned long maxSilence = 1500; // 最大静音时间(ms)
-  bool hasSpeech = false; //录音标志
-  const unsigned long minRecord = 1000; //最小录音时间
-  unsigned long recordStart = millis();
+  Serial.println("i2s_read");
+  // 开始循环录音，将录制结果保存在pcm_data中
+  size_t bytes_read = 0, recordingSize = 0, ttsSize = 0;
+  int16_t data[512];
+  size_t noVoicePre = 0, noVoiceCur = 0, noVoiceTotal = 0, VoiceCnt = 0;
+  bool recording = true;
 
-  // 开始录音
-  Serial.println("Start recording...");
-  while ( (recordingSize < BUFFER_SIZE - READ_CHUNK_SIZE*2)) {
-    // 读取音频数据
-    esp_err_t result = i2s_read(I2S_Port, readBuffer, sizeof(readBuffer), &bytes_read, portMAX_DELAY);
+
+  while(1){
+    // 记录刚开始的时间
+    noVoicePre = millis();
+
+    // i2s录音
+    esp_err_t result = i2s_read(I2S_NUM_0, data, sizeof(data), &bytes_read, portMAX_DELAY);
     if (result != ESP_OK) {
       Serial.printf("I2S Read Error: 0x%04x\n", result);
       continue;
     }
-
-
-    // 计算音频能量
-    uint32_t sum = 0;
-    for (int i=0; i<bytes_read/2; i++) {
-      sum += abs(readBuffer[i]);
-    }
-    uint16_t avgEnergy = sum / (bytes_read/2);
-
-    // 静音检测逻辑
-    if (avgEnergy < silenceThreshold) {
-      if (silenceStart == 0) silenceStart = millis();
-      if ((millis() - silenceStart > maxSilence) && (millis() - recordStart > minRecord)) {
-        Serial.println("Silence detected, stop recording");
-        break;
-      }
-    } else {
-      silenceStart = 0;  // 重置静音计时
-      hasSpeech = true; 
-    }
-
-    // 存储数据
-    memcpy(pcm_data + recordingSize, readBuffer, bytes_read);
+    memcpy(pcm_data + recordingSize, data, bytes_read);
     recordingSize += bytes_read;
-  }
+    //Serial.printf("%x recordingSize: %d bytes_read :%d\n", pcm_data + recordingSize, recordingSize, bytes_read);
 
-  // 语音识别处理
-  if (recordingSize > 0 && hasSpeech) {
+    /* for (int i = 0; i < bytes_read / 2; i++) {
+      Serial.println(data[i]);
+    } */
+
+    // 计算平均值
+    uint32_t sum_data = 0;
+    for (int i = 0; i < bytes_read / 2; i++) {
+      sum_data += abs(data[i]);
+    }
+    sum_data = sum_data / bytes_read;
+    //Serial.printf("sum_data :%d\n", sum_data);
+
+    // 判断当没有说话时间超过一定时间时就退出录音
+    noVoiceCur = millis();
+    if (sum_data < 500) {
+      noVoiceTotal += noVoiceCur - noVoicePre;
+    } else {
+      noVoiceTotal = 0;
+      VoiceCnt += 1;
+    }
+
+    if (noVoiceTotal > 1500) {
+      recording = false;
+    }
+
+    if (!recording || (recordingSize >= BUFFER_SIZE - bytes_read)) {
+      Serial.printf("record done: %d", recordingSize);
+      break;
+    }
+  }
+  if (VoiceCnt == 0) recordingSize = 0;
+
+  if (recordingSize > 0){
+    // 语音识别处理
     Serial.println("Processing speech recognition...");
-    String result = baiduSTT_Send(access_token, pcm_data, recordingSize);
-    Serial.println("Recognition Result: " + result);
-    inputText=result;
-  }
-  
-  if(inputText.length()>0){
-    Serial.println("\n Input:"+inputText);
-    answer = getAnswer(inputText.c_str());
+    String recognizedText = baiduSTT_Send(access_token, pcm_data, recordingSize);
+    Serial.println("Recognition Result: " + recognizedText);
+    inputText=recognizedText;
+    if(inputText==""){
+      Serial.println("No voice input");
+    }
+    //大模型
+    else{answer=getAnswer(inputText);
     Serial.println("Answer: " + answer);
-    Serial.println("Enter a prompt:");
+    }
   }
-  else{
-    Serial.println("等待语音输入");
-  }
-
-
-  // 重置参数
-  recordingSize = 0;
-  delay(2000);
-
+  delay(100);
+  
 }
 
 
