@@ -12,8 +12,8 @@ const char* ssid = "CMCC-9iMc";
 const char* password = "px2qyej7";
 
 //音频引脚设置
-#define INMP441_WS 4
-#define INMP441_SCK 5
+#define INMP441_WS 5
+#define INMP441_SCK 4
 #define INMP441_SD 6
 
 
@@ -176,7 +176,7 @@ void loop() {
 
     // 判断当没有说话时间超过一定时间时就退出录音
     noVoiceCur = millis();
-    if (sum_data < 500) {
+    if (sum_data < 100) {
       noVoiceTotal += noVoiceCur - noVoicePre;
     } else {
       noVoiceTotal = 0;
